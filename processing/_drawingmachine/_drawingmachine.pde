@@ -25,16 +25,19 @@ int pathPoint = 0;
 int shapeIndex = 0;
 int pointIndex = 0;
 
+
+float origAspectRatio = 1.0;
+
 int SKETCH_WIDTH = 800;
-int SKETCH_HEIGHT = 800;
+int SKETCH_HEIGHT = 400;
+
+//This controls the granularity of the points
 float SCALE_FACTOR = 1.0;
 float SCREEN_SCALE_FACTOR = 1.0;
 
 float ORIGINAL_WIDTH = 0;
 float ORIGINAL_HEIGHT = 0;
-
-int STEP_DELAY = 400;
-int PEN_DELAY = 5000;
+float MAX_DIM = 0;
 
 boolean PEN_UP = true;
 boolean FINISHED = false;
@@ -51,25 +54,49 @@ void setup() {
   strokeWeight(2);
   
   RG.init(this);
-  s = RG.loadShape("GoogleLogo.svg");  
+  s = RG.loadShape("GoogleLogoSq.svg");  
 
-  ORIGINAL_HEIGHT = s.getOrigHeight();
-  ORIGINAL_WIDTH = s.getOrigWidth();
 
-  ORIGINAL_HEIGHT = 1000;
-  ORIGINAL_WIDTH = 1000;
-  println(ORIGINAL_HEIGHT);
-  println(ORIGINAL_WIDTH);
   s.scale(SCALE_FACTOR);
+
+  ORIGINAL_HEIGHT = s.getHeight();
+  ORIGINAL_WIDTH = s.getWidth();
+
+  
   pathPoints = s.getPointsInPaths();
+
 
 
   float imHeight = s.getOrigHeight();
   float imWidth = s.getOrigWidth();
+  MAX_DIM = max(ORIGINAL_HEIGHT, ORIGINAL_WIDTH);
+  println("MAX_DIM: " + MAX_DIM);
+  println ("\t" + max(imHeight, imWidth));
+  RPoint tl = s.getTopLeft();
+  RPoint tr = s.getTopRight();
+  RPoint br = s.getBottomRight();
+  RPoint bl = s.getBottomLeft();
+  
+  //TODO: figure out mins and maxes and use those to maximize image area
+  
+  float[] maxes = { s.getHeight(), s.getWidth(), tl.x, tl.y, tr.x, tr.y, br.x, br.y, bl.x, bl.y };
+  MAX_DIM = max(maxes);
+  
+  println("\t corners: " + tl.x + ", " + tl.y + "; "
+      + tr.x + ", " + tr.y + "; "
+      + br.x + ", " + br.y + "; "
+      + bl.x + ", " + bl.y);
+  
+  origAspectRatio = s.getOrigWidth() / s.getOrigHeight();
   float xScale = SKETCH_WIDTH / imWidth;
   float yScale = SKETCH_HEIGHT / imHeight;
+  
+  
+  println("ASPECT: " + origAspectRatio);
+  println(xScale);
+  println(yScale);
   //TODO, choose right scale (min/max)
-  SCREEN_SCALE_FACTOR = 1 - ((xScale < 1 || yScale < 1) ? min(xScale, yScale) : max(xScale, yScale));
+  SCREEN_SCALE_FACTOR = ((xScale < 1 || yScale < 1) ? min(xScale, yScale) : max(xScale, yScale));
   println("SCREEN SCALE: " + SCREEN_SCALE_FACTOR);
   
 
@@ -79,7 +106,7 @@ void setup() {
 
 
 void draw() {
-
+  doNext();
 }
 
 void penUp() { 
@@ -87,7 +114,6 @@ void penUp() {
     oscP5.send(new OscMessage("pen", args), myNetAddressList);
     PEN_UP = true;
     println("pen up!");
-    delay(PEN_DELAY);
 }
 void penDown() { 
     Object[] args = {"down"};
@@ -120,16 +146,28 @@ void oscEvent(OscMessage theOscMessage) {
 
 
 
-/*
 
-private void pointToScreen(Object pts) {
+private void pointToScreen(float x, float y) {
     
+  int screen_x = int(x * width * SCREEN_SCALE_FACTOR * origAspectRatio);
+  int screen_y = int(y * height * SCREEN_SCALE_FACTOR);
   
-  //  stroke(0,0,255);
-    point(int((curPoint.x / ORIGINAL_WIDTH) * 400), int((curPoint.y / ORIGINAL_HEIGHT) * 400));
+  float mlt = min(width, height);
+  screen_x = int(x * mlt);
+  screen_y = int(y * mlt);
   
+
     stroke(0, 255, 0);
-    point((SCREEN_SCALE_FACTOR * curPoint.x), (SCREEN_SCALE_FACTOR * curPoint.y));
+    if(x>1 || y>1) { 
+      stroke(255,0,0); 
+      screen_x = (x>1) ? int(mlt) : screen_x;
+      screen_y = (y>1) ? int(mlt) : screen_y;
+    }
+
+    point(screen_x, screen_y);
+  
+
+//    point((SCREEN_SCALE_FACTOR * x), (SCREEN_SCALE_FACTOR * y));
     
     //curPoint.normalize();
 
@@ -140,19 +178,35 @@ private void pointToScreen(Object pts) {
     //ellipse(curPoint.x, curPoint.y, 10, 10);
 
 }
-*/
+
 
 private void sendNextPoint() {
-    RPoint[] curShape = pathPoints[shapeIndex];
-    RPoint curPoint = curShape[pointIndex];
-  
-    Object[] oscArgs = new Object[2];
-    oscArgs[0] = curPoint.x / ORIGINAL_WIDTH;
-    oscArgs[1] = curPoint.y / ORIGINAL_HEIGHT;
     
-    oscP5.send(new OscMessage("location", oscArgs), myNetAddressList);
+    try {
+      RPoint[] curShape = pathPoints[shapeIndex];
+      RPoint curPoint = curShape[pointIndex];
+      float theX = curPoint.x / MAX_DIM;
+      float theY = curPoint.y / MAX_DIM;
+
+      Object[] oscArgs = new Object[2];
+      
+      oscArgs[0] = theX;
+      oscArgs[1] = theY;
+      if (theX > 1 || theY > 1) {
+        println("Message out of range: {x: " + curPoint.x + "; y: " + curPoint.y + "; maxDim: " + MAX_DIM + "}");
+      }
+      oscP5.send(new OscMessage("location", oscArgs), myNetAddressList);
+      //pointToScreen((curPoint.x / ORIGINAL_WIDTH), (curPoint.y / ORIGINAL_HEIGHT));
+      pointToScreen(theX, theY);
+    }
+    catch(Exception e) {
+      println(e.getMessage());
+      FINISHED = true;
+    }
     
-    println("Sending message " + oscArgs[0] + ", " + oscArgs[1]);
+
+    
+    
 }
 
 
@@ -160,9 +214,9 @@ private void doNext() {
     if (FINISHED) {
       return;
     }
-    
+
     RPoint[] curShape = pathPoints[shapeIndex];
-    RPoint curPoint = curShape[pointIndex];
+    //RPoint curPoint = curShape[pointIndex];
     
     //we have finished the shape and the pen is still down, raise pen
     if (pointIndex >= curShape.length && !PEN_UP) {
@@ -185,8 +239,8 @@ private void doNext() {
     }
     //else, move to next point 
     else {
-      pointIndex++;
       sendNextPoint();
+      pointIndex++;
     }
     
 }
