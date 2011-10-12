@@ -1,7 +1,7 @@
 import hypermedia.video.*;
 
 
-String image_filename = "dots.jpg";
+String image_filename = "paper.jpg";
 PImage img;
 PImage edgeImg;
 OpenCV opencv;
@@ -12,36 +12,10 @@ int cvFrameY = 0;
 
 
 void setup() {
-  
-  float[][] kernel = { { -1, -1, -1 },
-                       { -1,  9, -1 },
-                       { -1, -1, -1 } };
-    
   img = loadImage(image_filename); // Load the original image
-  img.loadPixels();
+  img.resize(620, 0);
   
-  edgeImg = createImage(img.width, img.height, RGB);
-  // Loop through every pixel in the image.
-  for (int y = 1; y < img.height-1; y++) { // Skip top and bottom edges
-    for (int x = 1; x < img.width-1; x++) { // Skip left and right edges
-      float sum = 0; // Kernel sum for this pixel
-      for (int ky = -1; ky <= 1; ky++) {
-        for (int kx = -1; kx <= 1; kx++) {
-          // Calculate the adjacent pixel for this kernel point
-          int pos = (y + ky)*img.width + (x + kx);
-          // Image is grayscale, red/green/blue are identical
-          float val = red(img.pixels[pos]);
-          // Multiply adjacent pixels based on the kernel values
-          sum += kernel[ky+1][kx+1] * val;
-        }
-      }
-      // For this pixel in the new image, set the gray value
-      // based on the sum from the kernel
-      edgeImg.pixels[y*img.width + x] = color(sum);
-    }
-  }
-  // State that there are changes to edgeImg.pixels[]
-  edgeImg.updatePixels();
+  edgeImg = createEdgeImage(img);
   
   
   
@@ -65,11 +39,18 @@ void draw() {
   
     opencv.allocate(cvFrameSize,cvFrameSize);
     
-    int  destWidth = (cvFrameX+cvFrameSize) > edgeImg.width ? (edgeImg.width - cvFrameX) : cvFrameSize;
-    int  destHeight = (cvFrameY+cvFrameSize) > edgeImg.height ? (edgeImg.height - cvFrameY) : cvFrameSize;
-    
+    int  destWidth = cvFrameSize;
+    int  destHeight = cvFrameSize;
+    if ((cvFrameX+cvFrameSize) > edgeImg.width) {
+      destWidth = (edgeImg.width - cvFrameX);
+    }
+    if ((cvFrameY+cvFrameSize) > edgeImg.height) {
+      destHeight = (edgeImg.height - cvFrameY);
+    }
+    int srcWidth = destWidth;
+    int srcHeight = destHeight;
 
-    int MAX_BLOB_SIZE = cvFrameSize*cvFrameSize;
+    int MAX_BLOB_SIZE = cvFrameSize*cvFrameSize/2;
     //MAX_BLOB_SIZE = 100;
     // find blobs
     
@@ -78,7 +59,7 @@ void draw() {
     
         opencv.copy(edgeImg, cvFrameX, cvFrameY, cvFrameSize, cvFrameSize, 0, 0, destWidth, destHeight);
 
-        opencv.threshold(thresh, 255, OpenCV.THRESH_BINARY & OpenCV.THRESH_OTSU);    // set black & white threshold   
+        opencv.threshold(thresh); //, 255, OpenCV.THRESH_BINARY & OpenCV.THRESH_OTSU);    // set black & white threshold   
         Blob[] blobs = opencv.blobs( 5, MAX_BLOB_SIZE, 200, true); //, OpenCV.MAX_VERTICES*4 );
     
         println(blobs.length);
@@ -96,13 +77,48 @@ void draw() {
         }
     }
   
-  cvFrameX += cvFrameSize;
+  //let's get some overlap?
+  cvFrameX += cvFrameSize/2;
   if (cvFrameX > edgeImg.width) {
-    cvFrameY += cvFrameSize;
+    cvFrameY += cvFrameSize/2;
     cvFrameX = 0;
   }
   
   if (cvFrameY > edgeImg.height) {
     exit();
   }
+}
+
+
+
+PImage createEdgeImage(PImage pimg) {
+
+  float[][] kernel = { { -1, -1, -1 },
+                       { -1,  9, -1 },
+                       { -1, -1, -1 } };
+  pimg.loadPixels();
+  
+  PImage edged = createImage(pimg.width, pimg.height, RGB);
+  // Loop through every pixel in the image.
+  for (int y = 1; y < pimg.height-1; y++) { // Skip top and bottom edges
+    for (int x = 1; x < pimg.width-1; x++) { // Skip left and right edges
+      float sum = 0; // Kernel sum for this pixel
+      for (int ky = -1; ky <= 1; ky++) {
+        for (int kx = -1; kx <= 1; kx++) {
+          // Calculate the adjacent pixel for this kernel point
+          int pos = (y + ky)*pimg.width + (x + kx);
+          // Image is grayscale, red/green/blue are identical
+          float val = red(pimg.pixels[pos]);
+          // Multiply adjacent pixels based on the kernel values
+          sum += kernel[ky+1][kx+1] * val;
+        }
+      }
+      // For this pixel in the new image, set the gray value
+      // based on the sum from the kernel
+      edged.pixels[y*pimg.width + x] = color(sum);
+    }
+  }
+  // State that there are changes to edged.pixels[]
+  edged.updatePixels(); 
+  return edged;
 }
