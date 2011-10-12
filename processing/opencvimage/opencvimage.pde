@@ -1,7 +1,8 @@
 import hypermedia.video.*;
 
+Vector BLOBS;
 
-String image_filename = "paper.jpg";
+String image_filename = "yager.jpg";
 PImage img;
 PImage edgeImg;
 OpenCV opencv;
@@ -13,7 +14,7 @@ int cvFrameY = 0;
 
 void setup() {
   img = loadImage(image_filename); // Load the original image
-  img.resize(620, 0);
+  img.resize(400, 0);
   
   edgeImg = createEdgeImage(img);
   
@@ -28,13 +29,48 @@ void setup() {
 //  opencv.copy(edgeImg);
   //opencv.loadImage("dots.jpg", img.width, img.height);
  
-  image(img, 0, 0);
+  //image(img, 0, 0);
   image(edgeImg, width/2.0, 0);
+  
+  println(edgeImg.width);
+println(edgeImg.height);
+
+
+  BLOBS = imageToBlobs(edgeImg);
+  
 }
 
 
 void draw() {
+  while (BLOBS.size() > 0) {
+    MyBlob mb = (MyBlob)BLOBS.remove(0);
+    Blob[] bs = mb.blob;
+    int x = mb.xOffset;
+    int y = mb.yOffset;
 
+    for(int i=0; i<bs.length; i++) {
+          Blob b = bs[i];
+          //TODO: see if two or more lines in blob are along bounding box rectangle
+          //Rectangle bounding_box = blobs[blob_num].rectangle;
+          
+          
+          noFill();
+          stroke(0,128,0);
+          //this.rect( bounding_box.x, bounding_box.y, bounding_box.width, bounding_box.height);
+          
+          stroke(0, 0, 255);
+          //fill(0, 255, 0);
+          noFill();
+        
+            beginShape();
+            for( int j=0; j<b.points.length; j++ ) {
+                vertex( b.points[j].x + x, b.points[j].y + y);
+            }
+            endShape(CLOSE);
+    }
+  }
+  
+/*
     delay(1000);
   
     opencv.allocate(cvFrameSize,cvFrameSize);
@@ -87,8 +123,67 @@ void draw() {
   if (cvFrameY > edgeImg.height) {
     exit();
   }
+  */
 }
 
+
+
+java.util.Vector imageToBlobs(PImage theImg) {
+  java.util.Vector blobs = new java.util.Vector();
+
+
+  int cvFrameWidth = 50;
+  int xStep = cvFrameWidth - (cvFrameWidth/4);
+  int cvFrameHeight = 50;
+  int yStep = cvFrameHeight - (cvFrameHeight/4);
+  int MAX_BLOB_SIZE = cvFrameWidth*cvFrameHeight/2;
+
+  int MIN_THRESH = 50;
+  int MAX_THRESH = 200;
+  int THRESH_STEP = 10;
+
+
+  for (int x=0; x<=theImg.width; x+=xStep) {
+    for (int y=0; y<=theImg.height; y+=yStep) {
+
+      //if x is too close to edge
+      int sdw = ((theImg.width - x) < cvFrameWidth) ? (theImg.width - x) : cvFrameWidth;
+      int sdh = ((theImg.height - y) < cvFrameHeight) ? (theImg.height - y) : cvFrameHeight;
+
+      opencv.allocate(sdw, sdh);      
+
+      for (int thresh = MIN_THRESH; thresh <= MAX_THRESH; thresh += THRESH_STEP) {
+        //TODO: set opencv.ROI(cvFrameX, cvFrameY, destWidth, destHeight);
+  
+        //opencv.copy(image, sx, sy, swidth, sheight, dx, dy, dwidth, dheight);
+        opencv.copy(theImg, x, y, sdw, sdh, 0, 0, sdw, sdh);
+
+        opencv.threshold(thresh); //, 255, OpenCV.THRESH_BINARY & OpenCV.THRESH_OTSU);    // set black & white threshold   
+        Blob[] cvblobs = opencv.blobs( 5, MAX_BLOB_SIZE, 200, true); //, OpenCV.MAX_VERTICES*4 );
+
+        blobs.add(new MyBlob(cvblobs, x, y));
+      }
+      
+    }
+  }
+  
+
+  
+  return blobs;
+}
+
+
+class MyBlob {
+  Blob[] blob;
+  int xOffset;
+  int yOffset;
+  
+  MyBlob(Blob[] b, int xOffset, int yOffset) {
+    this.blob = b;
+    this.xOffset = xOffset;
+    this.yOffset = yOffset;
+  }
+}
 
 
 PImage createEdgeImage(PImage pimg) {
