@@ -50,10 +50,11 @@ boolean FINISHED = false;
 
 
 
+PTBlob CURRENT_BLOBSET;
+int BLOB_POINT_INDEX = 0;
 
 
-
-Vector MYBLOBS;
+PTBlobs MYBLOBS;
 
 String image_filename = "yager.jpg";
 PImage img;
@@ -104,10 +105,13 @@ void draw() {
   if (MYBLOBS.size() == 0) { exit(); return; }
   else {
 //  while (MYBLOBS.size() > 0) {
-    MyBlobset mb = (MyBlobset)MYBLOBS.remove(0);
-    Blob b = mb.blob;
-    int x = mb.xOffset;
-    int y = mb.yOffset;
+    PTBlob mb = MYBLOBS.pop();
+//    Blob[] bs = mb.blobs;
+
+//    for (int i=0; i< bs.length; i++) {
+//          Blob b = bs[i];
+          int x = mb.xOffset;
+          int y = mb.yOffset;
 
           //TODO: see if two or more lines in blob are along bounding box rectangle
           //Rectangle bounding_box = blobs[blob_num].rectangle;
@@ -122,14 +126,15 @@ void draw() {
           noFill();
         
           beginShape();
-          for( int j=0; j<b.points.length; j++ ) {
-              vertex( b.points[j].x + x, b.points[j].y + y);
+          for( int j=0; j<mb.points.length; j++ ) {
+              vertex( mb.points[j].x + x, mb.points[j].y + y);
           }
           endShape(CLOSE);
-          
+//    }
   }
   
 }
+
 
 
 
@@ -159,7 +164,7 @@ void oscEvent(OscMessage theOscMessage) {
     disconnect(theOscMessage.netAddress().address());
   }
   else if (theOscMessage.addrPattern().equals(nextPointPattern)) {
-    doNext();
+    //doNext();
   }
   /**
    * if pattern matching was not successful, then broadcast the incoming
@@ -171,110 +176,6 @@ void oscEvent(OscMessage theOscMessage) {
 }
 
 
-
-
-private void pointToScreen(float x, float y) {
-    println(x + ", " + y);
-
-  int screen_x = int(x * width); //* SCREEN_SCALE_FACTOR * origAspectRatio);
-  int screen_y = int(y * height);// * SCREEN_SCALE_FACTOR);
-  
-  float mlt = (origAspectRatio > 1) ? width : height;
-  screen_x = int(x * mlt);
-  screen_y = int(y * mlt);
-  
-
-    stroke(0, 255, 0);
-    if(x>1 || y>1) { 
-      stroke(255,0,0); 
-      screen_x = (x>1) ? int(mlt) : screen_x;
-      screen_y = (y>1) ? int(mlt) : screen_y;
-    }
-
-    point(screen_x, screen_y);
-  
-
-//    point((SCREEN_SCALE_FACTOR * x), (SCREEN_SCALE_FACTOR * y));
-    
-    //curPoint.normalize();
-
-    //stroke(0,0, 255);
-    //ellipse((SKETCH_WIDTH * curPoint.x), (SKETCH_HEIGHT * curPoint.y), 10, 10);
-    //println(points[count].x + " " +  points[count].y);
-
-    //ellipse(curPoint.x, curPoint.y, 10, 10);
-
-}
-
-
-private void sendNextPoint() {
-    
-    try {
-      RPoint[] curShape = pathPoints[shapeIndex];
-      RPoint curPoint = curShape[pointIndex];
-      float theX = (curPoint.x - minX) / MAX_DIM;
-      float theY = (curPoint.y - minY) / MAX_DIM;
-
-      Object[] oscArgs = new Object[2];
-      
-      oscArgs[0] = theX;
-      oscArgs[1] = theY;
-      if (theX > 1 || theY > 1) {
-        println("Message out of range: {x: " + theX + "; y: " + theY + "; maxDim: " + MAX_DIM + "}");
-      }
-      oscP5.send(new OscMessage("location", oscArgs), myNetAddressList);
-      //pointToScreen((curPoint.x / ORIGINAL_WIDTH), (curPoint.y / ORIGINAL_HEIGHT));
-      pointToScreen(theX, theY);
-    }
-    catch(Exception e) {
-      println(e.getMessage());
-      FINISHED = true;
-    }
-    
-
-    
-    
-}
-
-
-private void doNext() {
-    if (FINISHED) {
-      return;
-    }
-
-    RPoint[] curShape = pathPoints[shapeIndex];
-    //RPoint curPoint = curShape[pointIndex];
-    
-    if (shapeIndex == 0 && pointIndex == 0) {
-      sendNextPoint();
-      pointIndex++;
-    }
-    //we have finished the shape and the pen is still down, raise pen
-    else if (pointIndex >= curShape.length && !PEN_UP) {
-      penUp();
-    }
-    //we have finished the shape and the pen up, move to beginning of next shape
-    else if (pointIndex >= curShape.length && PEN_UP) {
-      pointIndex = 0;
-      shapeIndex++;
-      sendNextPoint();
-    }
-    //we have drawn the last shape
-    else if (shapeIndex >= pathPoints.length) {
-      FINISHED = true;
-      penUp();
-    }
-    //we are at the first point in the shape and pen is up, lower pen
-    else if (pointIndex == 0 && PEN_UP) {
-      penDown();
-    }
-    //else, move to next point 
-    else {
-      sendNextPoint();
-      pointIndex++;
-    }
-    
-}
 
 
  private void connect(String theIPaddress) {
@@ -310,8 +211,8 @@ if (myNetAddressList.contains(theIPaddress, myBroadcastPort)) {
 
 
 
-java.util.Vector imageToBlobs(PImage theImg) {
-  java.util.Vector blobs = new java.util.Vector();
+PTBlobs imageToBlobs(PImage theImg) {
+  PTBlobs blobs = new PTBlobs();
 
 
   int cvFrameWidth = 50;
@@ -345,9 +246,9 @@ java.util.Vector imageToBlobs(PImage theImg) {
         opencv.threshold(thresh); //, 255, OpenCV.THRESH_BINARY & OpenCV.THRESH_OTSU);    // set black & white threshold   
         Blob[] cvblobs = opencv.blobs( MIN_BLOB_SIZE, MAX_BLOB_SIZE, MAX_BLOBS, true); //, OpenCV.MAX_VERTICES*4 );
 
-        //blobs.add(new MyBlobset(cvblobs, x, y));
+        //blobs.add(new PTBlob(cvblobs, x, y, thresh));
         for (int i=0; i<cvblobs.length; i++) {
-          blobs.add(new MyBlobset(cvblobs[i], x, y, thresh));
+          blobs.push(new PTBlob(cvblobs[i], x, y, thresh));
         }
       }
       
@@ -360,19 +261,6 @@ java.util.Vector imageToBlobs(PImage theImg) {
 }
 
 
-class MyBlobset {
-  Blob blob;
-  int xOffset;
-  int yOffset;
-  int thresh;
-  
-  MyBlobset(Blob b, int xOffset, int yOffset, int thresh) {
-    this.blob = b;
-    this.xOffset = xOffset;
-    this.yOffset = yOffset;
-    this.thresh = thresh;
-  }
-}
 
 
 PImage createEdgeImage(PImage pimg) {
