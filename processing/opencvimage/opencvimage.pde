@@ -16,7 +16,7 @@ String myDisconnectPattern = "/server/disconnect";
 String nextPointPattern = "/point/next";
 
 
-static boolean SEND_OSC = false;
+static boolean SEND_OSC = true;
 static boolean PRINT_TO_SCREEN = true;
 
 CommandList COMMANDS;
@@ -112,7 +112,7 @@ void setup() {
 
 
 void draw() {
-  doNext();
+  //doNext();
 }
 
 void screenCommand(OscCommand cmd) {
@@ -130,7 +130,7 @@ void doNext() {
   OscCommand cmd = getNextCommand();
   if (cmd == null) { return; }
   if (SEND_OSC) {
-    //sendCommand(cmd);
+    sendCommand(cmd);
   }
   if (PRINT_TO_SCREEN) {
     screenCommand(cmd);
@@ -146,19 +146,8 @@ OscCommand getNextCommand() {
   } 
 }
 
-
-
-void penUp() { 
-    Object[] args = {"up"};
-    oscP5.send(new OscMessage("pen", args), myNetAddressList);
-    PEN_UP = true;
-    println("pen up!");
-}
-void penDown() { 
-    Object[] args = {"down"};
-    oscP5.send(new OscMessage("pen", args), myNetAddressList);
-    PEN_UP = false; 
-    println("pen down!");
+void sendCommand(OscCommand cmd) {
+  oscP5.send(new OscMessage(cmd.getPattern(), cmd.getParams()), myNetAddressList);
 }
 
 
@@ -172,7 +161,7 @@ void oscEvent(OscMessage theOscMessage) {
     disconnect(theOscMessage.netAddress().address());
   }
   else if (theOscMessage.addrPattern().equals(nextPointPattern)) {
-    //doNext();
+    doNext();
   }
   /**
    * if pattern matching was not successful, then broadcast the incoming
