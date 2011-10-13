@@ -16,7 +16,10 @@ String myDisconnectPattern = "/server/disconnect";
 String nextPointPattern = "/point/next";
 
 
+static boolean SEND_OSC = false;
+static boolean PRINT_TO_SCREEN = true;
 
+CommandList COMMANDS;
 
 
 RShape s;
@@ -97,46 +100,51 @@ void setup() {
 
   MYBLOBS = imageToBlobs(edgeImg);
   
+  CoordinateMapper coordMapper = new CoordinateMapper(MAX_DIM);
+  CommandGenerator cg = new CommandGenerator(MYBLOBS, coordMapper);
+  try {
+    COMMANDS = cg.generate();
+  }
+  catch (Exception e) {
+    println(e);
+  }
 }
 
 
 void draw() {
-
-  if (MYBLOBS.size() == 0) { exit(); return; }
-  else {
-//  while (MYBLOBS.size() > 0) {
-    PTBlob mb = MYBLOBS.pop();
-//    Blob[] bs = mb.blobs;
-
-//    for (int i=0; i< bs.length; i++) {
-//          Blob b = bs[i];
-          int x = mb.xOffset;
-          int y = mb.yOffset;
-
-          //TODO: see if two or more lines in blob are along bounding box rectangle
-          //Rectangle bounding_box = blobs[blob_num].rectangle;
-          
-          
-          noFill();
-          stroke(0,128,0);
-          //this.rect( bounding_box.x, bounding_box.y, bounding_box.width, bounding_box.height);
-          
-          stroke(0); //mb.thresh);
-          //fill(0, 255, 0);
-          noFill();
-        
-          beginShape();
-          for( int j=0; j<mb.points.length; j++ ) {
-              vertex( mb.points[j].x + x, mb.points[j].y + y);
-          }
-          endShape(CLOSE);
-//    }
-  }
-  
+  doNext();
 }
 
+void screenCommand(OscCommand cmd) {
+  if (cmd instanceof MoveCommand) {
+    MoveCommand mv = (MoveCommand) cmd;
+    int newX = int(MAX_DIM * mv.x);
+    int newY = int(MAX_DIM * mv.y);
+    //println(mv.x + " ==> " + newX + "; " + mv.y + " ==> " + newY);
+    point(newX, newY);
+    
+  }
+}
 
+void doNext() {
+  OscCommand cmd = getNextCommand();
+  if (cmd == null) { return; }
+  if (SEND_OSC) {
+    //sendCommand(cmd);
+  }
+  if (PRINT_TO_SCREEN) {
+    screenCommand(cmd);
+  }
+}
 
+OscCommand getNextCommand() {
+   if(COMMANDS.isEmpty()) {
+    return null;
+  }
+  else {
+    return COMMANDS.removeNext();
+  } 
+}
 
 
 
@@ -214,7 +222,6 @@ if (myNetAddressList.contains(theIPaddress, myBroadcastPort)) {
 PTBlobs imageToBlobs(PImage theImg) {
   PTBlobs blobs = new PTBlobs();
 
-
   int cvFrameWidth = 50;
   int xStep = cvFrameWidth - (cvFrameWidth/4);
   int cvFrameHeight = 50;
@@ -226,7 +233,6 @@ PTBlobs imageToBlobs(PImage theImg) {
   int MIN_THRESH = 100;
   int MAX_THRESH = 200;
   int THRESH_STEP = 10;
-
 
   for (int x=0; x<=theImg.width; x+=xStep) {
     for (int y=0; y<=theImg.height; y+=yStep) {
@@ -254,8 +260,6 @@ PTBlobs imageToBlobs(PImage theImg) {
       
     }
   }
-  
-
   
   return blobs;
 }
