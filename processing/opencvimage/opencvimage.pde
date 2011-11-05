@@ -32,6 +32,7 @@ int pathPoint = 0;
 int shapeIndex = 0;
 int pointIndex = 0;
 
+float GRANULARITY = 1.0;
 
 float origAspectRatio = 1.0;
 
@@ -59,7 +60,7 @@ int BLOB_POINT_INDEX = 0;
 
 PTBlobs MYBLOBS;
 
-String image_filename = "paper.jpg";
+String image_filename = "Mechatronics-group.jpg";
 PImage img;
 PImage edgeImg;
 OpenCV opencv;
@@ -73,7 +74,7 @@ void setup() {
   frameRate(120);
 
   img = loadImage(image_filename); // Load the original image
-  img.resize(0, 800);
+  //img.resize(0, 800);
   
   size(img.width*2, img.height);
   background(255);
@@ -86,7 +87,7 @@ void setup() {
   oscP5 = new OscP5(this, myListeningPort);
 
   PImage tempImg = loadImage(image_filename);
-  tempImg.resize(0,800);
+  tempImg.resize(int(img.width*GRANULARITY),int(img.height*GRANULARITY));
   edgeImg = createEdgeImage(tempImg);
 
   MAX_DIM = max(img.height, img.width);
@@ -120,8 +121,8 @@ void draw() {
 void screenCommand(OscCommand cmd) {
   if (cmd instanceof MoveCommand) {
     MoveCommand mv = (MoveCommand) cmd;
-    int newX = int(MAX_DIM * mv.x);
-    int newY = int(MAX_DIM * mv.y);
+    int newX = int((MAX_DIM * mv.x) / GRANULARITY);
+    int newY = int((MAX_DIM * mv.y) / GRANULARITY);
     //println(mv.x + " ==> " + newX + "; " + mv.y + " ==> " + newY);
     //point(newX, newY);
     vertex(newX, newY);
