@@ -115,7 +115,7 @@ void setup() {
 
 
 void draw() {
-  doNext();
+  //doNext();
 }
 
 void screenCommand(OscCommand cmd) {
@@ -256,9 +256,9 @@ PTBlobs imageToBlobs(PImage theImg) {
   println("min blob size: " + MIN_BLOB_SIZE);
   int MAX_BLOBS = 8000;
   
-  int MIN_THRESH = 30; //50;
+  int MIN_THRESH = 40; //50;
   int MAX_THRESH = 200;
-  int THRESH_STEP = 10;
+  int THRESH_STEP = 20;
 
 //  for (int x=0; x<=theImg.width; x+=xStep) {
 //    for (int y=0; y<=theImg.height; y+=yStep) {
