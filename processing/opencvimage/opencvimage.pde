@@ -20,7 +20,7 @@ static boolean SEND_OSC = true;
 static boolean PRINT_TO_SCREEN = true;
 
 CommandList COMMANDS;
-
+int TOTAL_COMMANDS=0;
 
 RShape s;
 RShape polyshp;
@@ -59,7 +59,7 @@ int BLOB_POINT_INDEX = 0;
 
 PTBlobs MYBLOBS;
 
-String image_filename = "yager.jpg";
+String image_filename = "paper.jpg";
 PImage img;
 PImage edgeImg;
 OpenCV opencv;
@@ -70,32 +70,32 @@ int cvFrameY = 0;
 
 
 void setup() {
-  frameRate(60);
+  frameRate(120);
 
   img = loadImage(image_filename); // Load the original image
-  img.resize(400, 0);
+  img.resize(0, 800);
   
-  size(img.width*3, img.height);
+  size(img.width*2, img.height);
   background(255);
   
+  noFill();
+  stroke(0, 90);
   
   
   opencv = new OpenCV(this);
   oscP5 = new OscP5(this, myListeningPort);
 
   PImage tempImg = loadImage(image_filename);
-  tempImg.resize(400,0);
+  tempImg.resize(0,800);
   edgeImg = createEdgeImage(tempImg);
 
   MAX_DIM = max(img.height, img.width);
   
   
   //print images to screen
-  image(img, (width/3.0), 0);
-  image(edgeImg, 2*(width/3.0), 0);
+  image(img, (width/2.0), 0);
+  //image(edgeImg, 2*(width/3.0), 0);
   
-  println(edgeImg.width);
-  println(edgeImg.height);
 
 
   MYBLOBS = imageToBlobs(edgeImg);
@@ -107,12 +107,14 @@ void setup() {
   }
   catch (Exception e) {
     println(e);
+    exit();
   }
+  TOTAL_COMMANDS = COMMANDS.size();
 }
 
 
 void draw() {
-  //doNext();
+  doNext();
 }
 
 void screenCommand(OscCommand cmd) {
@@ -121,24 +123,48 @@ void screenCommand(OscCommand cmd) {
     int newX = int(MAX_DIM * mv.x);
     int newY = int(MAX_DIM * mv.y);
     //println(mv.x + " ==> " + newX + "; " + mv.y + " ==> " + newY);
-    point(newX, newY);
-    
+    //point(newX, newY);
+    vertex(newX, newY);
   }
+  
+  else if (cmd instanceof PenCommand) {
+    String dir = (String)cmd.getParams()[0];
+    if (dir.equals(PenCommand.UP)) {
+      //println("ENDING SHAPE!");
+      endShape();
+    }
+    else {
+      //println("BEGINNING SHAPE!");
+      beginShape();
+    }
+      
+  }
+  
 }
 
 void doNext() {
   OscCommand cmd = getNextCommand();
-  if (cmd == null) { return; }
-  if (SEND_OSC) {
-    sendCommand(cmd);
+  if (cmd == null) { 
+    println("FINISHED");
+    return; 
   }
-  if (PRINT_TO_SCREEN) {
-    screenCommand(cmd);
+  else {
+    if (SEND_OSC) {
+      sendCommand(cmd);
+    }
+    if (PRINT_TO_SCREEN) {
+      screenCommand(cmd);
+    }
+    int remainder = COMMANDS.size();
+    float pctComplete =  float(TOTAL_COMMANDS - remainder) / float(TOTAL_COMMANDS) * 100;
+    int minutes = millis()/(1000*60);
+    int seconds = millis()/(1000) - 60*minutes;
+    println ("Step " + (TOTAL_COMMANDS - remainder) + " of " + TOTAL_COMMANDS + "; " + pctComplete + "% complete... (runtime: " + minutes + "m " + seconds + "s)");
   }
 }
 
 OscCommand getNextCommand() {
-   if(COMMANDS.isEmpty()) {
+  if(COMMANDS.isEmpty()) {
     return null;
   }
   else {
@@ -147,6 +173,15 @@ OscCommand getNextCommand() {
 }
 
 void sendCommand(OscCommand cmd) {
+  if (cmd instanceof MoveCommand) {
+    try {
+      //println("SENDING: " + cmd.x + ", " + cmd.y);
+    }
+    catch(Exception e) {
+      println(e);
+    }
+    
+  }
   oscP5.send(new OscMessage(cmd.getPattern(), cmd.getParams()), myNetAddressList);
 }
 
@@ -211,24 +246,25 @@ if (myNetAddressList.contains(theIPaddress, myBroadcastPort)) {
 PTBlobs imageToBlobs(PImage theImg) {
   PTBlobs blobs = new PTBlobs();
 
-  int cvFrameWidth = 50;
+  int cvFrameWidth = theImg.width;
   int xStep = cvFrameWidth - (cvFrameWidth/4);
-  int cvFrameHeight = 50;
+  int cvFrameHeight = theImg.height;
   int yStep = cvFrameHeight - (cvFrameHeight/4);
-  int MAX_BLOB_SIZE = cvFrameWidth*cvFrameHeight/2;
-  int MIN_BLOB_SIZE = 10;
-  int MAX_BLOBS = 200;
+  int MAX_BLOB_SIZE = cvFrameWidth*cvFrameHeight/10;
+  int MIN_BLOB_SIZE = cvFrameWidth*cvFrameHeight/2500;
+  println("min blob size: " + MIN_BLOB_SIZE);
+  int MAX_BLOBS = 8000;
   
-  int MIN_THRESH = 100;
+  int MIN_THRESH = 30; //50;
   int MAX_THRESH = 200;
   int THRESH_STEP = 10;
 
-  for (int x=0; x<=theImg.width; x+=xStep) {
-    for (int y=0; y<=theImg.height; y+=yStep) {
+//  for (int x=0; x<=theImg.width; x+=xStep) {
+//    for (int y=0; y<=theImg.height; y+=yStep) {
 
       //if x is too close to edge
-      int sdw = ((theImg.width - x) < cvFrameWidth) ? (theImg.width - x) : cvFrameWidth;
-      int sdh = ((theImg.height - y) < cvFrameHeight) ? (theImg.height - y) : cvFrameHeight;
+      int sdw = cvFrameWidth; //((theImg.width - x) < cvFrameWidth) ? (theImg.width - x) : cvFrameWidth;
+      int sdh = cvFrameHeight; //((theImg.height - y) < cvFrameHeight) ? (theImg.height - y) : cvFrameHeight;
 
       opencv.allocate(sdw, sdh);      
 
@@ -236,19 +272,25 @@ PTBlobs imageToBlobs(PImage theImg) {
         //TODO: set opencv.ROI(cvFrameX, cvFrameY, destWidth, destHeight);
   
         //opencv.copy(image, sx, sy, swidth, sheight, dx, dy, dwidth, dheight);
-        opencv.copy(theImg, x, y, sdw, sdh, 0, 0, sdw, sdh);
+        opencv.copy(theImg, 0, 0, sdw, sdh, 0, 0, sdw, sdh);
 
         opencv.threshold(thresh); //, 255, OpenCV.THRESH_BINARY & OpenCV.THRESH_OTSU);    // set black & white threshold   
-        Blob[] cvblobs = opencv.blobs( MIN_BLOB_SIZE, MAX_BLOB_SIZE, MAX_BLOBS, true); //, OpenCV.MAX_VERTICES*4 );
+
+        Blob[] cvblobs = new Blob[MAX_BLOBS];
+        cvblobs = opencv.blobs( MIN_BLOB_SIZE, MAX_BLOB_SIZE, MAX_BLOBS, true); //, OpenCV.MAX_VERTICES*4 );
+
+
+          println("Found: " + cvblobs.length + " blobs at threshold: " + thresh);
+
 
         //blobs.add(new PTBlob(cvblobs, x, y, thresh));
         for (int i=0; i<cvblobs.length; i++) {
-          blobs.push(new PTBlob(cvblobs[i], x, y, thresh));
+          blobs.push(new PTBlob(cvblobs[i], 0, 0, thresh));
         }
       }
       
-    }
-  }
+//    }
+//  }
   
   return blobs;
 }
