@@ -1,23 +1,11 @@
+import javax.swing.JFileChooser;
+import javax.swing.filechooser.FileNameExtensionFilter;
+import controlP5.*;
 import hypermedia.video.*;
 import geomerative.*;
 import oscP5.*;
 import netP5.*;
 
-
-OscP5 oscP5;
-NetAddressList myNetAddressList = new NetAddressList();
-/* listeningPort is the port the server is listening for incoming messages */
-int myListeningPort = 32000;
-/* the broadcast port is the port the clients should listen for incoming messages from the server*/
-int myBroadcastPort = 12000;
-
-String myConnectPattern = "/server/connect";
-String myDisconnectPattern = "/server/disconnect";
-String nextPointPattern = "/point/next";
-
-
-static boolean SEND_OSC = true;
-static boolean PRINT_TO_SCREEN = true;
 
 CommandList COMMANDS;
 int TOTAL_COMMANDS=0;
@@ -32,7 +20,7 @@ int pathPoint = 0;
 int shapeIndex = 0;
 int pointIndex = 0;
 
-float GRANULARITY = 1.0;
+float GRANULARITY = 0.5;
 
 float origAspectRatio = 1.0;
 
@@ -47,10 +35,15 @@ float MAX_DIM = 0;
 
 float minX, minY, maxX, maxY;
 
+int MIN_THRESH = 40; //50;
+int MAX_THRESH = 200;
+int THRESH_STEP = 20;
+
+
 boolean PEN_UP = true;
 boolean FINISHED = false;
 
-
+ControlP5 controlP5;
 
 
 
@@ -60,7 +53,9 @@ int BLOB_POINT_INDEX = 0;
 
 PTBlobs MYBLOBS;
 
-String image_filename = "Mechatronics-group.jpg";
+boolean showBlobs = true;
+
+String image_filename = "";
 PImage img;
 PImage edgeImg;
 OpenCV opencv;
@@ -71,36 +66,94 @@ int cvFrameY = 0;
 
 
 void setup() {
+
+
+
+
+  JFileChooser chooser = new JFileChooser();
+  
+  try {
+      // Create a File object containing the canonical path of the
+      // desired directory
+      File f = new File(new File("./data").getCanonicalPath());
+      // Set the current directory
+      chooser.setCurrentDirectory(f);
+  }
+  catch (IOException e) {
+  }
+  
+  chooser.setFileFilter(new FileNameExtensionFilter("JPG & GIF Images", "jpg", "gif"));
+  int returnVal = chooser.showOpenDialog(null);
+  if (returnVal == JFileChooser.APPROVE_OPTION) {
+    println("You chose to open this file: " + chooser.getSelectedFile().getName());
+    image_filename = chooser.getSelectedFile().getAbsolutePath();
+  }
+  else {
+    image_filename = "blank.gif";
+    exit();
+  }
+
+
   frameRate(120);
 
   img = loadImage(image_filename); // Load the original image
   //img.resize(0, 800);
-  
-  size(img.width*2, img.height);
-  background(255);
-  
+
+
+  opencv = new OpenCV(this);
+  startServer();
+
+
+  //tempImg.resize(800,0);
+
+
+
+  size(img.width, img.height);
+  background(0);
+
+
+  //TODO: http://www.sojamo.de/libraries/controlP5/examples/ControlP5window/ControlP5window.pde
+  controlP5 = new ControlP5(this);
+
+  controlP5.addSlider("GRANULARITY", 0.0, 1.0, GRANULARITY, 80,(height-40),70,14);
+  controlP5.addNumberbox("THRESHOLD_STEP", THRESH_STEP, 160,(height-40),70,14);
+  controlP5.addRange("THRESHOLD_RANGE", 10.0, 250.0, float(MIN_THRESH), float(MAX_THRESH), 240,(height-40),70,14);
+  controlP5.addButton("REGENERATE",1.0,400,(height-40),70,14);
+  controlP5.addToggle("IMAGE_MODE", true, 10, (height - 40), 40, 14);
+
   noFill();
   stroke(0, 90);
-  
-  
-  opencv = new OpenCV(this);
-  oscP5 = new OscP5(this, myListeningPort);
 
+
+  //print images to screen
+  image(img, 0, 0);
+  //image(edgeImg, 2*(width/3.0), 0);
+
+  generate();
+
+}
+
+
+void keyPressed() {
+  if (key == 'h') {
+    controlP5.hide();
+  } else if (key == 's') {
+    controlP5.show();
+  }
+}
+
+
+
+//TODO: I think we're currently only doing black and white - see what happens when doing each RGB channel individually
+void generate() {
   PImage tempImg = loadImage(image_filename);
-  tempImg.resize(int(img.width*GRANULARITY),int(img.height*GRANULARITY));
+  tempImg.resize(int(img.width*GRANULARITY), int(img.height*GRANULARITY));
   edgeImg = createEdgeImage(tempImg);
 
-  MAX_DIM = max(img.height, img.width);
+  MAX_DIM = max(edgeImg.height, edgeImg.width);
   
-  
-  //print images to screen
-  image(img, (width/2.0), 0);
-  //image(edgeImg, 2*(width/3.0), 0);
-  
-
-
   MYBLOBS = imageToBlobs(edgeImg);
-  
+
   CoordinateMapper coordMapper = new CoordinateMapper(MAX_DIM);
   CommandGenerator cg = new CommandGenerator(MYBLOBS, coordMapper);
   try {
@@ -114,48 +167,80 @@ void setup() {
 }
 
 
-void draw() {
-  //doNext();
+
+void showImage() {
+  background(255);
+  image(img, 0, 0);
 }
 
-void screenCommand(OscCommand cmd) {
-  if (cmd instanceof MoveCommand) {
-    MoveCommand mv = (MoveCommand) cmd;
-    int newX = int((MAX_DIM * mv.x) / GRANULARITY);
-    int newY = int((MAX_DIM * mv.y) / GRANULARITY);
-    //println(mv.x + " ==> " + newX + "; " + mv.y + " ==> " + newY);
-    //point(newX, newY);
-    vertex(newX, newY);
-  }
-  
-  else if (cmd instanceof PenCommand) {
-    String dir = (String)cmd.getParams()[0];
-    if (dir.equals(PenCommand.UP)) {
-      //println("ENDING SHAPE!");
-      endShape();
-    }
-    else {
-      //println("BEGINNING SHAPE!");
+void showBlobs() {
+    background(255);
+    stroke(0, 127);
+    noFill();
+    Iterator iter = MYBLOBS.iterator();
+    CoordinateMapper mapper = new CoordinateMapper(MAX_DIM);
+    int screenmax = max(height, width);
+    while (iter.hasNext()) {
+      println("drawing blob");
+      PTBlob b = (PTBlob)iter.next();
       beginShape();
-    }
-      
+      for (int i=0; i<b.points.length; i++) {
+        float theX = mapper.map(b.points[i].x + b.xOffset) * screenmax;
+        float theY = mapper.map(b.points[i].y + b.yOffset) * screenmax;
+        vertex(theX, theY);
+      }
+      endShape();
+    }  
+}
+
+void IMAGE_MODE(boolean flag) {
+  if (flag == true) {
+    showImage();
+  }
+  else {
+    showBlobs();
+  }
+}
+
+void REGENERATE() {
+  println("clicked regenerate");
+  generate();
+}
+
+void THRESHOLD_STEP(int step) {
+  println("step: " + step);
+  THRESH_STEP = step;
+}
+
+void controlEvent(ControlEvent theEvent) {
+  if(theEvent.controller().name().equals("THRESHOLD_RANGE")) {
+    Range r = (Range) theEvent.controller();
+    println("thresh: " + r.highValue() + "; " + r.lowValue());
+    MAX_THRESH = int(r.highValue());
+    THRESH_STEP = int(r.lowValue());
+    //r.setHighValue(float(MAX_THRESH));
+    //r.setLowValue(float(MIN_THRESH));
+  }
+  else if (theEvent.controller().name().equals("GRANULARITY")) {
+    Slider r = (Slider) theEvent.controller();
+    println("granularity: " + r.value());
+    GRANULARITY = r.value();
   }
   
 }
+
+
+void draw() { }
+
 
 void doNext() {
   OscCommand cmd = getNextCommand();
   if (cmd == null) { 
     println("FINISHED");
-    return; 
+    return;
   }
   else {
-    if (SEND_OSC) {
-      sendCommand(cmd);
-    }
-    if (PRINT_TO_SCREEN) {
-      screenCommand(cmd);
-    }
+    sendCommand(cmd);
     int remainder = COMMANDS.size();
     float pctComplete =  float(TOTAL_COMMANDS - remainder) / float(TOTAL_COMMANDS) * 100;
     int minutes = millis()/(1000*60);
@@ -165,12 +250,12 @@ void doNext() {
 }
 
 OscCommand getNextCommand() {
-  if(COMMANDS.isEmpty()) {
+  if (COMMANDS.isEmpty()) {
     return null;
   }
   else {
     return COMMANDS.removeNext();
-  } 
+  }
 }
 
 void sendCommand(OscCommand cmd) {
@@ -181,60 +266,9 @@ void sendCommand(OscCommand cmd) {
     catch(Exception e) {
       println(e);
     }
-    
   }
   oscP5.send(new OscMessage(cmd.getPattern(), cmd.getParams()), myNetAddressList);
 }
-
-
-
-void oscEvent(OscMessage theOscMessage) {
-  /* check if the address pattern fits any of our patterns */
-  if (theOscMessage.addrPattern().equals(myConnectPattern)) {
-    connect(theOscMessage.netAddress().address());
-  }
-  else if (theOscMessage.addrPattern().equals(myDisconnectPattern)) {
-    disconnect(theOscMessage.netAddress().address());
-  }
-  else if (theOscMessage.addrPattern().equals(nextPointPattern)) {
-    doNext();
-  }
-  /**
-   * if pattern matching was not successful, then broadcast the incoming
-   * message to all addresses in the netAddresList. 
-   */
-  else {
-    oscP5.send(theOscMessage, myNetAddressList);
-  }
-}
-
-
-
-
- private void connect(String theIPaddress) {
-     if (!myNetAddressList.contains(theIPaddress, myBroadcastPort)) {
-       myNetAddressList.add(new NetAddress(theIPaddress, myBroadcastPort));
-       println("### adding "+theIPaddress+" to the list.");
-     } else {
-       println("### "+theIPaddress+" is already connected.");
-     }
-     println("### currently there are "+myNetAddressList.list().size()+" remote locations connected.");
- }
-
-
-
-private void disconnect(String theIPaddress) {
-if (myNetAddressList.contains(theIPaddress, myBroadcastPort)) {
-		myNetAddressList.remove(theIPaddress, myBroadcastPort);
-       println("### removing "+theIPaddress+" from the list.");
-     } else {
-       println("### "+theIPaddress+" is not connected.");
-     }
-       println("### currently there are "+myNetAddressList.list().size());
- }
-
-
-
 
 
 
@@ -255,44 +289,42 @@ PTBlobs imageToBlobs(PImage theImg) {
   int MIN_BLOB_SIZE = cvFrameWidth*cvFrameHeight/2500;
   println("min blob size: " + MIN_BLOB_SIZE);
   int MAX_BLOBS = 8000;
-  
-  int MIN_THRESH = 40; //50;
-  int MAX_THRESH = 200;
-  int THRESH_STEP = 20;
-
-//  for (int x=0; x<=theImg.width; x+=xStep) {
-//    for (int y=0; y<=theImg.height; y+=yStep) {
-
-      //if x is too close to edge
-      int sdw = cvFrameWidth; //((theImg.width - x) < cvFrameWidth) ? (theImg.width - x) : cvFrameWidth;
-      int sdh = cvFrameHeight; //((theImg.height - y) < cvFrameHeight) ? (theImg.height - y) : cvFrameHeight;
-
-      opencv.allocate(sdw, sdh);      
-
-      for (int thresh = MIN_THRESH; thresh <= MAX_THRESH; thresh += THRESH_STEP) {
-        //TODO: set opencv.ROI(cvFrameX, cvFrameY, destWidth, destHeight);
-  
-        //opencv.copy(image, sx, sy, swidth, sheight, dx, dy, dwidth, dheight);
-        opencv.copy(theImg, 0, 0, sdw, sdh, 0, 0, sdw, sdh);
-
-        opencv.threshold(thresh); //, 255, OpenCV.THRESH_BINARY & OpenCV.THRESH_OTSU);    // set black & white threshold   
-
-        Blob[] cvblobs = new Blob[MAX_BLOBS];
-        cvblobs = opencv.blobs( MIN_BLOB_SIZE, MAX_BLOB_SIZE, MAX_BLOBS, true); //, OpenCV.MAX_VERTICES*4 );
 
 
-          println("Found: " + cvblobs.length + " blobs at threshold: " + thresh);
+
+  //  for (int x=0; x<=theImg.width; x+=xStep) {
+  //    for (int y=0; y<=theImg.height; y+=yStep) {
+
+  //if x is too close to edge
+  int sdw = cvFrameWidth; //((theImg.width - x) < cvFrameWidth) ? (theImg.width - x) : cvFrameWidth;
+  int sdh = cvFrameHeight; //((theImg.height - y) < cvFrameHeight) ? (theImg.height - y) : cvFrameHeight;
+
+  opencv.allocate(sdw, sdh);      
+
+  for (int thresh = MIN_THRESH; thresh <= MAX_THRESH; thresh += THRESH_STEP) {
+    //TODO: set opencv.ROI(cvFrameX, cvFrameY, destWidth, destHeight);
+
+    //opencv.copy(image, sx, sy, swidth, sheight, dx, dy, dwidth, dheight);
+    opencv.copy(theImg, 0, 0, sdw, sdh, 0, 0, sdw, sdh);
+
+    opencv.threshold(thresh); //, 255, OpenCV.THRESH_BINARY & OpenCV.THRESH_OTSU);    // set black & white threshold   
+
+    Blob[] cvblobs = new Blob[MAX_BLOBS];
+    cvblobs = opencv.blobs( MIN_BLOB_SIZE, MAX_BLOB_SIZE, MAX_BLOBS, true); //, OpenCV.MAX_VERTICES*4 );
 
 
-        //blobs.add(new PTBlob(cvblobs, x, y, thresh));
-        for (int i=0; i<cvblobs.length; i++) {
-          blobs.push(new PTBlob(cvblobs[i], 0, 0, thresh));
-        }
-      }
-      
-//    }
-//  }
-  
+    println("Found: " + cvblobs.length + " blobs at threshold: " + thresh);
+
+
+    //blobs.add(new PTBlob(cvblobs, x, y, thresh));
+    for (int i=0; i<cvblobs.length; i++) {
+      blobs.push(new PTBlob(cvblobs[i], 0, 0, thresh));
+    }
+  }
+
+  //    }
+  //  }
+
   return blobs;
 }
 
@@ -302,12 +334,22 @@ PTBlobs imageToBlobs(PImage theImg) {
 PImage createEdgeImage(PImage pimg) {
   pimg.filter(INVERT);
   pimg.filter(BLUR);
-  
-  float[][] kernel = { { -1, -1, -1 },
-                       { -1,  9, -1 },
-                       { -1, -1, -1 } };
+
+  float[][] kernel = { 
+    { 
+      -1, -1, -1
+    }
+    , 
+    { 
+      -1, 9, -1
+    }
+    , 
+    { 
+      -1, -1, -1
+    }
+  };
   pimg.loadPixels();
-  
+
   PImage edged = createImage(pimg.width, pimg.height, RGB);
   // Loop through every pixel in the image.
   for (int y = 1; y < pimg.height-1; y++) { // Skip top and bottom edges
@@ -332,3 +374,4 @@ PImage createEdgeImage(PImage pimg) {
   edged.updatePixels(); 
   return edged;
 }
+

@@ -16,25 +16,22 @@ public class PTBlob extends Blob {
 }
 
 
-public class PTBlobs  {
-  private Vector vec;
+public class PTBlobs  extends java.util.Vector {
   public PTBlobs() {
-    this.vec = new Vector();
   }
   
   //TODO: not really push/pop
   public void push(PTBlob ptb) {
-    this.vec.add(ptb);
+    this.add(ptb);
   }
   
   public PTBlob pop() {
-    return (PTBlob)this.vec.remove(0);
+    return (PTBlob)this.remove(0);
   }
   
-  public int size() {
-    return this.vec.size();
-  }  
 }
+
+
 
 
 
@@ -126,9 +123,9 @@ public class CommandGenerator  {
   public CommandList generate() {
     CommandList commands = new CommandList();
     commands.add(new PenCommand(PenCommand.UP));
-    
-    while (blobs.size() > 0) {
-      PTBlob b = blobs.pop();
+    Iterator iter = blobs.iterator();
+    while (iter.hasNext()) {
+      PTBlob b = (PTBlob)iter.next();
       for (int i=0; i<b.points.length; i++) {
         commands.add(new MoveCommand(this.cMapper.map(b.points[i].x + b.xOffset), this.cMapper.map(b.points[i].y + b.yOffset)));
         if (i==0) {
