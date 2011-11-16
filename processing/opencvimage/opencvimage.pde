@@ -44,6 +44,7 @@ boolean PEN_UP = true;
 boolean FINISHED = false;
 
 ControlP5 controlP5;
+ControlWindow controlWindow;
 
 
 
@@ -66,10 +67,6 @@ int cvFrameY = 0;
 
 
 void setup() {
-
-
-
-
   JFileChooser chooser = new JFileChooser();
   
   try {
@@ -114,12 +111,25 @@ void setup() {
 
   //TODO: http://www.sojamo.de/libraries/controlP5/examples/ControlP5window/ControlP5window.pde
   controlP5 = new ControlP5(this);
-
-  controlP5.addSlider("GRANULARITY", 0.0, 1.0, GRANULARITY, 80,(height-40),70,14);
-  controlP5.addNumberbox("THRESHOLD_STEP", THRESH_STEP, 160,(height-40),70,14);
-  controlP5.addRange("THRESHOLD_RANGE", 10.0, 250.0, float(MIN_THRESH), float(MAX_THRESH), 240,(height-40),70,14);
-  controlP5.addButton("REGENERATE",1.0,400,(height-40),70,14);
-  controlP5.addToggle("IMAGE_MODE", true, 10, (height - 40), 40, 14);
+  //controlP5.setAutoDraw(false);
+  controlWindow = controlP5.addControlWindow("controlP5window",100,100,480,75);
+  controlWindow.hideCoordinates();
+  
+  controlWindow.setBackground(color(0));
+  
+  
+  Controller textLabel = controlP5.addTextlabel("INSTRUCTIONS", "Press 's' to show this control window, 'h' to hide it", 10, 10);
+  textLabel.setWindow(controlWindow);
+  Controller granularitySlider = controlP5.addSlider("GRANULARITY", 0.0, 1.0, GRANULARITY, 80,(40),70,14);
+  granularitySlider.setWindow(controlWindow);
+  Controller thresholdStepNumberbox = controlP5.addNumberbox("THRESHOLD_STEP", THRESH_STEP, 160,(40),70,14);
+  thresholdStepNumberbox.setWindow(controlWindow);
+  Controller thresholdRange = controlP5.addRange("THRESHOLD_RANGE", 10.0, 250.0, float(MIN_THRESH), float(MAX_THRESH), 240,(40),70,14);
+  thresholdRange.setWindow(controlWindow);
+  Controller regenerateButton = controlP5.addButton("REGENERATE",1.0,400,(40),70,14);
+  regenerateButton.setWindow(controlWindow);
+  Controller imageModeToggle = controlP5.addToggle("IMAGE_MODE", true, 10, (40), 40, 14);
+  imageModeToggle.setWindow(controlWindow);
 
   noFill();
   stroke(0, 90);
@@ -133,13 +143,18 @@ void setup() {
 
 }
 
+void draw() {
+  //controlP5.draw();
+}
+
 
 void keyPressed() {
   if (key == 'h') {
-    controlP5.hide();
+    controlP5.window("controlP5window").hide();
   } else if (key == 's') {
-    controlP5.show();
+    controlP5.window("controlP5window").show();
   }
+
 }
 
 
@@ -175,7 +190,7 @@ void showImage() {
 
 void showBlobs() {
     background(255);
-    stroke(0, 127);
+    stroke(0);
     noFill();
     Iterator iter = MYBLOBS.iterator();
     CoordinateMapper mapper = new CoordinateMapper(MAX_DIM);
@@ -190,7 +205,7 @@ void showBlobs() {
         vertex(theX, theY);
       }
       endShape();
-    }  
+    }
 }
 
 void IMAGE_MODE(boolean flag) {
@@ -230,7 +245,6 @@ void controlEvent(ControlEvent theEvent) {
 }
 
 
-void draw() { }
 
 
 void doNext() {
