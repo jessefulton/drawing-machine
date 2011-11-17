@@ -67,3 +67,49 @@ private void disconnect(String theIPaddress) {
 
 
 
+
+
+
+
+void doNext() {
+  OscCommand cmd = getNextCommand();
+  if (cmd == null) { 
+    println("FINISHED");
+    return;
+  }
+  else {
+    sendCommand(cmd);
+    int remainder = COMMANDS.size();
+    float pctComplete =  float(TOTAL_COMMANDS - remainder) / float(TOTAL_COMMANDS) * 100;
+    int minutes = millis()/(1000*60);
+    int seconds = millis()/(1000) - 60*minutes;
+    println ("Step " + (TOTAL_COMMANDS - remainder) + " of " + TOTAL_COMMANDS + "; " + pctComplete + "% complete... (runtime: " + minutes + "m " + seconds + "s)");
+  }
+}
+
+OscCommand getNextCommand() {
+  if (COMMANDS.isEmpty()) {
+    return null;
+  }
+  else {
+    return COMMANDS.removeNext();
+  }
+}
+
+void sendCommand(OscCommand cmd) {
+  if (cmd instanceof MoveCommand) {
+    try {
+      //println("SENDING: " + cmd.x + ", " + cmd.y);
+    }
+    catch(Exception e) {
+      println(e);
+    }
+  }
+  oscP5.send(new OscMessage(cmd.getPattern(), cmd.getParams()), myNetAddressList);
+}
+
+
+
+
+
+

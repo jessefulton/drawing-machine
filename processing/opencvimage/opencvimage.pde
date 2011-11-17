@@ -105,46 +105,29 @@ void setup() {
 
 
 
-  size(img.width, img.height);
+  size(800, 600);
   background(0);
 
-
-  //TODO: http://www.sojamo.de/libraries/controlP5/examples/ControlP5window/ControlP5window.pde
-  controlP5 = new ControlP5(this);
-  //controlP5.setAutoDraw(false);
-  controlWindow = controlP5.addControlWindow("controlP5window",100,100,480,75);
-  controlWindow.hideCoordinates();
-  
-  controlWindow.setBackground(color(0));
-  
-  
-  Controller textLabel = controlP5.addTextlabel("INSTRUCTIONS", "Press 's' to show this control window, 'h' to hide it", 10, 10);
-  textLabel.setWindow(controlWindow);
-  Controller granularitySlider = controlP5.addSlider("GRANULARITY", 0.0, 1.0, GRANULARITY, 80,(40),70,14);
-  granularitySlider.setWindow(controlWindow);
-  Controller thresholdStepNumberbox = controlP5.addNumberbox("THRESHOLD_STEP", THRESH_STEP, 160,(40),70,14);
-  thresholdStepNumberbox.setWindow(controlWindow);
-  Controller thresholdRange = controlP5.addRange("THRESHOLD_RANGE", 10.0, 250.0, float(MIN_THRESH), float(MAX_THRESH), 240,(40),70,14);
-  thresholdRange.setWindow(controlWindow);
-  Controller regenerateButton = controlP5.addButton("REGENERATE",1.0,400,(40),70,14);
-  regenerateButton.setWindow(controlWindow);
-  Controller imageModeToggle = controlP5.addToggle("IMAGE_MODE", true, 10, (40), 40, 14);
-  imageModeToggle.setWindow(controlWindow);
+  initControls();
 
   noFill();
   stroke(0, 90);
 
-
-  //print images to screen
-  image(img, 0, 0);
-  //image(edgeImg, 2*(width/3.0), 0);
-
+  int screenmaxdim = min(height, width);
+  float xRatio = img.width / width;
+  float yRatio = img.height / height;
+  
+  float resz = max(xRatio, yRatio);
+  SCREEN_SCALE_FACTOR = resz < 1.0 ? 1.0 : resz;
+  
+  showImage();
   generate();
 
 }
 
 void draw() {
   //controlP5.draw();
+
 }
 
 
@@ -154,7 +137,6 @@ void keyPressed() {
   } else if (key == 's') {
     controlP5.window("controlP5window").show();
   }
-
 }
 
 
@@ -182,114 +164,33 @@ void generate() {
 }
 
 
-
 void showImage() {
-  background(255);
-  image(img, 0, 0);
+  background(255);  
+  image(img, 0, 0, img.width/SCREEN_SCALE_FACTOR, img.height/SCREEN_SCALE_FACTOR);
 }
 
 void showBlobs() {
-    background(255);
-    stroke(0);
-    noFill();
     Iterator iter = MYBLOBS.iterator();
     CoordinateMapper mapper = new CoordinateMapper(MAX_DIM);
-    int screenmax = max(height, width);
+    int screenmaxdim = max(img.height, img.width);
     while (iter.hasNext()) {
-      println("drawing blob");
       PTBlob b = (PTBlob)iter.next();
+      println(b.thresh);
+    //background(0,0,255);
+    stroke(0,255,0);
+    //noFill();
+
       beginShape();
       for (int i=0; i<b.points.length; i++) {
-        float theX = mapper.map(b.points[i].x + b.xOffset) * screenmax;
-        float theY = mapper.map(b.points[i].y + b.yOffset) * screenmax;
+        float theX = mapper.map(b.points[i].x + b.xOffset) * (screenmaxdim/SCREEN_SCALE_FACTOR);
+        float theY = mapper.map(b.points[i].y + b.yOffset) * (screenmaxdim/SCREEN_SCALE_FACTOR);
         vertex(theX, theY);
       }
       endShape();
+
     }
+    println("finished drawing blobs");
 }
-
-void IMAGE_MODE(boolean flag) {
-  if (flag == true) {
-    showImage();
-  }
-  else {
-    showBlobs();
-  }
-}
-
-void REGENERATE() {
-  println("clicked regenerate");
-  generate();
-}
-
-void THRESHOLD_STEP(int step) {
-  println("step: " + step);
-  THRESH_STEP = step;
-}
-
-void controlEvent(ControlEvent theEvent) {
-  if(theEvent.controller().name().equals("THRESHOLD_RANGE")) {
-    Range r = (Range) theEvent.controller();
-    println("thresh: " + r.highValue() + "; " + r.lowValue());
-    MAX_THRESH = int(r.highValue());
-    THRESH_STEP = int(r.lowValue());
-    //r.setHighValue(float(MAX_THRESH));
-    //r.setLowValue(float(MIN_THRESH));
-  }
-  else if (theEvent.controller().name().equals("GRANULARITY")) {
-    Slider r = (Slider) theEvent.controller();
-    println("granularity: " + r.value());
-    GRANULARITY = r.value();
-  }
-  
-}
-
-
-
-
-void doNext() {
-  OscCommand cmd = getNextCommand();
-  if (cmd == null) { 
-    println("FINISHED");
-    return;
-  }
-  else {
-    sendCommand(cmd);
-    int remainder = COMMANDS.size();
-    float pctComplete =  float(TOTAL_COMMANDS - remainder) / float(TOTAL_COMMANDS) * 100;
-    int minutes = millis()/(1000*60);
-    int seconds = millis()/(1000) - 60*minutes;
-    println ("Step " + (TOTAL_COMMANDS - remainder) + " of " + TOTAL_COMMANDS + "; " + pctComplete + "% complete... (runtime: " + minutes + "m " + seconds + "s)");
-  }
-}
-
-OscCommand getNextCommand() {
-  if (COMMANDS.isEmpty()) {
-    return null;
-  }
-  else {
-    return COMMANDS.removeNext();
-  }
-}
-
-void sendCommand(OscCommand cmd) {
-  if (cmd instanceof MoveCommand) {
-    try {
-      //println("SENDING: " + cmd.x + ", " + cmd.y);
-    }
-    catch(Exception e) {
-      println(e);
-    }
-  }
-  oscP5.send(new OscMessage(cmd.getPattern(), cmd.getParams()), myNetAddressList);
-}
-
-
-
-
-
-
-
 
 
 PTBlobs imageToBlobs(PImage theImg) {

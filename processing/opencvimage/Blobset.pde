@@ -1,4 +1,4 @@
-import hypermedia.video.Blob;
+import hypermedia.video.*;
 import java.util.Iterator;
 import java.util.Vector;
 
@@ -13,12 +13,39 @@ public class PTBlob extends Blob {
     this.yOffset = yOffset;
     this.thresh = thresh;
   } 
+  
+  /*
+  public void mapPoints(CoordinateMapper cm) {
+    for (int i=0; i<this.points.length; i++) {
+      //float oldX = this.points[i].x;
+      //float oldY = this.points[i].y;
+      float newX = cm.map(this.points[i].x + this.xOffset);
+      float newY = cm.map(this.points[i].y + this.yOffset);
+      this.points[i].x = newX;
+      this.points[i].y = newY;
+    }
+  }
+  */
 }
 
 
 public class PTBlobs  extends java.util.Vector {
+  private CoordinateMapper mapper;
+  
   public PTBlobs() {
   }
+  
+  public PTBlobs(CoordinateMapper cm) {
+    this.mapper = cm;
+  }
+  
+  public float mapX(PTBlob blob, int idx) {
+    return this.mapper.map(blob.points[idx].x + blob.xOffset);
+  }
+
+  public float mapY(PTBlob blob, int idx) {
+    return this.mapper.map(blob.points[idx].y + blob.yOffset);
+  }  
   
   //TODO: not really push/pop
   public void push(PTBlob ptb) {
@@ -150,6 +177,4 @@ public class CoordinateMapper {
   public float map(int x) {
     return x/this.maxDim;
   }
-  
-  
 }
