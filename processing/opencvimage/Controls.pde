@@ -57,7 +57,7 @@ void controlEvent(ControlEvent theEvent) {
     Range r = (Range) theEvent.controller();
     println("thresh: " + r.highValue() + "; " + r.lowValue());
     MAX_THRESH = int(r.highValue());
-    THRESH_STEP = int(r.lowValue());
+    MIN_THRESH = int(r.lowValue());
     //r.setHighValue(float(MAX_THRESH));
     //r.setLowValue(float(MIN_THRESH));
   }

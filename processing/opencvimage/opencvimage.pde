@@ -1,3 +1,5 @@
+//Duh! http://processing.org/reference/norm_.html
+
 import javax.swing.JFileChooser;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import controlP5.*;
@@ -20,7 +22,7 @@ int pathPoint = 0;
 int shapeIndex = 0;
 int pointIndex = 0;
 
-float GRANULARITY = 0.5;
+float GRANULARITY = 1.0;
 
 float origAspectRatio = 1.0;
 
@@ -35,9 +37,9 @@ float MAX_DIM = 0;
 
 float minX, minY, maxX, maxY;
 
-int MIN_THRESH = 40; //50;
-int MAX_THRESH = 200;
-int THRESH_STEP = 20;
+int MIN_THRESH = 10; //50;
+int MAX_THRESH = 250;
+int THRESH_STEP = 30;
 
 
 boolean PEN_UP = true;
@@ -114,12 +116,12 @@ void setup() {
   stroke(0, 90);
 
   int screenmaxdim = min(height, width);
-  float xRatio = img.width / width;
-  float yRatio = img.height / height;
-  
+  float xRatio = img.width / float(width);
+  float yRatio = img.height / float(height);
+  println("image dimensions: " + img.width + "x" + img.height);
   float resz = max(xRatio, yRatio);
   SCREEN_SCALE_FACTOR = resz < 1.0 ? 1.0 : resz;
-  
+  println("SCREEN_SCALE_FACTOR " + SCREEN_SCALE_FACTOR);
   showImage();
   generate();
 
@@ -127,7 +129,6 @@ void setup() {
 
 void draw() {
   //controlP5.draw();
-
 }
 
 
@@ -145,11 +146,40 @@ void keyPressed() {
 void generate() {
   PImage tempImg = loadImage(image_filename);
   tempImg.resize(int(img.width*GRANULARITY), int(img.height*GRANULARITY));
-  edgeImg = createEdgeImage(tempImg);
-
-  MAX_DIM = max(edgeImg.height, edgeImg.width);
   
-  MYBLOBS = imageToBlobs(edgeImg);
+  tempImg.loadPixels();
+
+  PImage redChannel = createImage(tempImg.width, tempImg.height, RGB);
+  PImage greenChannel = createImage(tempImg.width, tempImg.height, RGB);
+  PImage blueChannel = createImage(tempImg.width, tempImg.height, RGB);
+  redChannel.loadPixels();
+  greenChannel.loadPixels();
+  blueChannel.loadPixels();
+  for (int i=0; i< tempImg.pixels.length; i++) {
+    redChannel.pixels[i] = color(red(tempImg.pixels[i]));
+    greenChannel.pixels[i] = color(green(tempImg.pixels[i]));
+    blueChannel.pixels[i] = color(blue(tempImg.pixels[i]));
+  }
+
+  MYBLOBS = new PTBlobs();
+
+  PImage[] channels = {redChannel, greenChannel, blueChannel};
+
+  for(int i=0; i< channels.length; i++) {
+    PImage channel = channels[i];
+    PImage edged = createEdgeImage(channel);
+    
+    PTBlobs channelBlobs = imageToBlobs(edged);
+    MYBLOBS.addAll(channelBlobs);
+  }
+  
+  
+  
+  edgeImg = createEdgeImage(tempImg);
+  MYBLOBS.addAll(imageToBlobs(edgeImg));
+
+  MAX_DIM = max(tempImg.height, tempImg.width);
+  
 
   CoordinateMapper coordMapper = new CoordinateMapper(MAX_DIM);
   CommandGenerator cg = new CommandGenerator(MYBLOBS, coordMapper);
@@ -177,7 +207,7 @@ void showBlobs() {
       PTBlob b = (PTBlob)iter.next();
       println(b.thresh);
     //background(0,0,255);
-    stroke(0,255,0);
+    stroke(0,255,0, 30);
     //noFill();
 
       beginShape();

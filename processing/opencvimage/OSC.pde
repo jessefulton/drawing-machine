@@ -75,6 +75,7 @@ void doNext() {
   OscCommand cmd = getNextCommand();
   if (cmd == null) { 
     println("FINISHED");
+    noLoop();
     return;
   }
   else {
