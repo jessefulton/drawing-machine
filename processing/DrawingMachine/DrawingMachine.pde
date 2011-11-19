@@ -40,7 +40,8 @@ float minX, minY, maxX, maxY;
 int MIN_THRESH = 10; //50;
 int MAX_THRESH = 250;
 int THRESH_STEP = 30;
-
+int MAX_BLOB_SIZE;
+int MIN_BLOB_SIZE;
 
 boolean PEN_UP = true;
 boolean FINISHED = false;
@@ -97,6 +98,8 @@ void setup() {
 
   img = loadImage(image_filename); // Load the original image
   //img.resize(0, 800);
+  MAX_BLOB_SIZE = img.width*img.height/10;
+  MIN_BLOB_SIZE = img.width*img.height/2500;
 
 
   opencv = new OpenCV(this);
@@ -142,13 +145,15 @@ void keyPressed() {
 
 
 
-//TODO: I think we're currently only doing black and white - see what happens when doing each RGB channel individually
+
 void generate() {
   PImage tempImg = loadImage(image_filename);
   tempImg.resize(int(img.width*GRANULARITY), int(img.height*GRANULARITY));
   
   tempImg.loadPixels();
-
+  MYBLOBS = new PTBlobs();
+  
+/*  
   PImage redChannel = createImage(tempImg.width, tempImg.height, RGB);
   PImage greenChannel = createImage(tempImg.width, tempImg.height, RGB);
   PImage blueChannel = createImage(tempImg.width, tempImg.height, RGB);
@@ -161,8 +166,6 @@ void generate() {
     blueChannel.pixels[i] = color(blue(tempImg.pixels[i]));
   }
 
-  MYBLOBS = new PTBlobs();
-
   PImage[] channels = {redChannel, greenChannel, blueChannel};
 
   for(int i=0; i< channels.length; i++) {
@@ -172,7 +175,7 @@ void generate() {
     PTBlobs channelBlobs = imageToBlobs(edged);
     MYBLOBS.addAll(channelBlobs);
   }
-  
+*/  
   
   
   edgeImg = createEdgeImage(tempImg);
@@ -200,6 +203,7 @@ void showImage() {
 }
 
 void showBlobs() {
+    background(255);
     Iterator iter = MYBLOBS.iterator();
     CoordinateMapper mapper = new CoordinateMapper(MAX_DIM);
     int screenmaxdim = max(img.height, img.width);
@@ -207,8 +211,10 @@ void showBlobs() {
       PTBlob b = (PTBlob)iter.next();
       println(b.thresh);
     //background(0,0,255);
-    stroke(0,255,0, 30);
-    //noFill();
+    stroke(0);
+    //noStroke();
+    //fill(0, 10);
+    noFill();
 
       beginShape();
       for (int i=0; i<b.points.length; i++) {
@@ -219,8 +225,35 @@ void showBlobs() {
       endShape();
 
     }
+    
+    
+    /*
     println("finished drawing blobs");
+    PImage blobsImage = createImage(width, height, ARGB);
+    blobsImage.loadPixels();
+    loadPixels();
+    for (int i = 0; i < (width*height); i++) {
+      blobsImage.pixels[i] = pixels[i];
+    }
+    blobsImage.updatePixels();
+    //blobsImage.filter(INVERT);
+    //blobsImage = createEdgeImage(blobsImage);
+
+    //background(255);
+    PTBlobs consolidatedBlobs = imageToBlobs(blobsImage);
+    for(int i=0; i<consolidatedBlobs.size(); i++) {
+      stroke(0, 150);
+      noFill();
+      PTBlob cb = (PTBlob)consolidatedBlobs.get(i);
+      beginShape();
+      for (int j=0; j<cb.points.length; j++) {
+        vertex(300+cb.points[j].x+cb.xOffset, cb.points[j].y+cb.yOffset);
+      }
+      endShape();
+    }
+    */
 }
+
 
 
 PTBlobs imageToBlobs(PImage theImg) {
@@ -230,13 +263,15 @@ PTBlobs imageToBlobs(PImage theImg) {
   int xStep = cvFrameWidth - (cvFrameWidth/4);
   int cvFrameHeight = theImg.height;
   int yStep = cvFrameHeight - (cvFrameHeight/4);
-  int MAX_BLOB_SIZE = cvFrameWidth*cvFrameHeight/10;
-  int MIN_BLOB_SIZE = cvFrameWidth*cvFrameHeight/2500;
   println("min blob size: " + MIN_BLOB_SIZE);
   int MAX_BLOBS = 8000;
 
+  MAX_BLOB_SIZE = cvFrameWidth*cvFrameHeight/10;
+  MIN_BLOB_SIZE = cvFrameWidth*cvFrameHeight/2500;
 
-
+  println("MIN BLOB SIZE: " + MIN_BLOB_SIZE);
+  println("MAX BLOB SIZE: " + MAX_BLOB_SIZE);
+  
   //  for (int x=0; x<=theImg.width; x+=xStep) {
   //    for (int y=0; y<=theImg.height; y+=yStep) {
 
@@ -280,19 +315,9 @@ PImage createEdgeImage(PImage pimg) {
   pimg.filter(INVERT);
   pimg.filter(BLUR);
 
-  float[][] kernel = { 
-    { 
-      -1, -1, -1
-    }
-    , 
-    { 
-      -1, 9, -1
-    }
-    , 
-    { 
-      -1, -1, -1
-    }
-  };
+  float[][] kernel = { { -1, -1, -1 },
+                       { -1,  9, -1 },
+                       { -1, -1, -1 }};
   pimg.loadPixels();
 
   PImage edged = createImage(pimg.width, pimg.height, RGB);
