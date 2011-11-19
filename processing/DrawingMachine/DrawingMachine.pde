@@ -1,7 +1,7 @@
 //Duh! http://processing.org/reference/norm_.html
 
 import javax.swing.JFileChooser;
-import javax.swing.filechooser.FileNameExtensionFilter;
+//import javax.swing.filechooser.FileNameExtensionFilter;
 import controlP5.*;
 import hypermedia.video.*;
 import geomerative.*;
@@ -82,7 +82,7 @@ void setup() {
   catch (IOException e) {
   }
   
-  chooser.setFileFilter(new FileNameExtensionFilter("JPG & GIF Images", "jpg", "gif"));
+  //chooser.setFileFilter(new FileNameExtensionFilter("JPG & GIF Images", "jpg", "gif"));
   int returnVal = chooser.showOpenDialog(null);
   if (returnVal == JFileChooser.APPROVE_OPTION) {
     println("You chose to open this file: " + chooser.getSelectedFile().getName());
