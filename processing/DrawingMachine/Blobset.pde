@@ -34,7 +34,9 @@ public class PTBlobs  extends java.util.Vector {
   
   public PTBlobs() {
   }
-  
+  public PTBlobs(Vector b) {
+    this.addAll(b);
+  }
   public PTBlobs(CoordinateMapper cm) {
     this.mapper = cm;
   }

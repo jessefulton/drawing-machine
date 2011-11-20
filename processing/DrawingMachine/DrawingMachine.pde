@@ -94,7 +94,7 @@ void setup() {
   }
 
 
-  frameRate(120);
+  frameRate(4);
 
   img = loadImage(image_filename); // Load the original image
   //img.resize(0, 800);
@@ -151,35 +151,17 @@ void generate() {
   tempImg.resize(int(img.width*GRANULARITY), int(img.height*GRANULARITY));
   
   tempImg.loadPixels();
-  MYBLOBS = new PTBlobs();
-  
-/*  
-  PImage redChannel = createImage(tempImg.width, tempImg.height, RGB);
-  PImage greenChannel = createImage(tempImg.width, tempImg.height, RGB);
-  PImage blueChannel = createImage(tempImg.width, tempImg.height, RGB);
-  redChannel.loadPixels();
-  greenChannel.loadPixels();
-  blueChannel.loadPixels();
-  for (int i=0; i< tempImg.pixels.length; i++) {
-    redChannel.pixels[i] = color(red(tempImg.pixels[i]));
-    greenChannel.pixels[i] = color(green(tempImg.pixels[i]));
-    blueChannel.pixels[i] = color(blue(tempImg.pixels[i]));
-  }
+ 
+  //EdgeProcessor edgeProcessor = new EdgeProcessor();
+  //  MYBLOBS = edgeProcessor.process(tempImg, new ImageProcessorOptions(8000, MIN_BLOB_SIZE, MAX_BLOB_SIZE, MIN_THRESH, MAX_THRESH, THRESH_STEP));
 
-  PImage[] channels = {redChannel, greenChannel, blueChannel};
-
-  for(int i=0; i< channels.length; i++) {
-    PImage channel = channels[i];
-    PImage edged = createEdgeImage(channel);
-    
-    PTBlobs channelBlobs = imageToBlobs(edged);
-    MYBLOBS.addAll(channelBlobs);
-  }
-*/  
+  PosterizeProcessor processor = new PosterizeProcessor();
+  Vector blobs = processor.process(tempImg, 8000, MIN_BLOB_SIZE, MAX_BLOB_SIZE, 6);// , 8000, MAX_BLOB_SIZE, MIN_BLOB_SIZE, 6));
+  MYBLOBS = new PTBlobs(blobs);
   
-  
-  edgeImg = createEdgeImage(tempImg);
-  MYBLOBS.addAll(imageToBlobs(edgeImg));
+  //GreyscalePosterizeProcessor processor = new GreyscalePosterizeProcessor();
+  //Vector blobs = processor.process(tempImg, 8000, MIN_BLOB_SIZE, MAX_BLOB_SIZE, 6);// , 8000, MAX_BLOB_SIZE, MIN_BLOB_SIZE, 6));
+  //MYBLOBS = new PTBlobs(blobs);
 
   MAX_DIM = max(tempImg.height, tempImg.width);
   
@@ -204,22 +186,20 @@ void showImage() {
 
 void showBlobs() {
     background(255);
+    println("About to draw " + MYBLOBS.size() + " blobs");
     Iterator iter = MYBLOBS.iterator();
     CoordinateMapper mapper = new CoordinateMapper(MAX_DIM);
     int screenmaxdim = max(img.height, img.width);
     while (iter.hasNext()) {
       PTBlob b = (PTBlob)iter.next();
-      println(b.thresh);
-    //background(0,0,255);
-    stroke(0);
-    //noStroke();
-    //fill(0, 10);
-    noFill();
-
       beginShape();
       for (int i=0; i<b.points.length; i++) {
         float theX = mapper.map(b.points[i].x + b.xOffset) * (screenmaxdim/SCREEN_SCALE_FACTOR);
         float theY = mapper.map(b.points[i].y + b.yOffset) * (screenmaxdim/SCREEN_SCALE_FACTOR);
+    
+        stroke(0);
+        noFill();
+
         vertex(theX, theY);
       }
       endShape();
@@ -255,93 +235,4 @@ void showBlobs() {
 }
 
 
-
-PTBlobs imageToBlobs(PImage theImg) {
-  PTBlobs blobs = new PTBlobs();
-
-  int cvFrameWidth = theImg.width;
-  int xStep = cvFrameWidth - (cvFrameWidth/4);
-  int cvFrameHeight = theImg.height;
-  int yStep = cvFrameHeight - (cvFrameHeight/4);
-  println("min blob size: " + MIN_BLOB_SIZE);
-  int MAX_BLOBS = 8000;
-
-  MAX_BLOB_SIZE = cvFrameWidth*cvFrameHeight/10;
-  MIN_BLOB_SIZE = cvFrameWidth*cvFrameHeight/2500;
-
-  println("MIN BLOB SIZE: " + MIN_BLOB_SIZE);
-  println("MAX BLOB SIZE: " + MAX_BLOB_SIZE);
-  
-  //  for (int x=0; x<=theImg.width; x+=xStep) {
-  //    for (int y=0; y<=theImg.height; y+=yStep) {
-
-  //if x is too close to edge
-  int sdw = cvFrameWidth; //((theImg.width - x) < cvFrameWidth) ? (theImg.width - x) : cvFrameWidth;
-  int sdh = cvFrameHeight; //((theImg.height - y) < cvFrameHeight) ? (theImg.height - y) : cvFrameHeight;
-
-  opencv.allocate(sdw, sdh);      
-
-  for (int thresh = MIN_THRESH; thresh <= MAX_THRESH; thresh += THRESH_STEP) {
-    //TODO: set opencv.ROI(cvFrameX, cvFrameY, destWidth, destHeight);
-
-    //opencv.copy(image, sx, sy, swidth, sheight, dx, dy, dwidth, dheight);
-    opencv.copy(theImg, 0, 0, sdw, sdh, 0, 0, sdw, sdh);
-
-    opencv.threshold(thresh); //, 255, OpenCV.THRESH_BINARY & OpenCV.THRESH_OTSU);    // set black & white threshold   
-
-    Blob[] cvblobs = new Blob[MAX_BLOBS];
-    cvblobs = opencv.blobs( MIN_BLOB_SIZE, MAX_BLOB_SIZE, MAX_BLOBS, true); //, OpenCV.MAX_VERTICES*4 );
-
-
-    println("Found: " + cvblobs.length + " blobs at threshold: " + thresh);
-
-
-    //blobs.add(new PTBlob(cvblobs, x, y, thresh));
-    for (int i=0; i<cvblobs.length; i++) {
-      blobs.push(new PTBlob(cvblobs[i], 0, 0, thresh));
-    }
-  }
-
-  //    }
-  //  }
-
-  return blobs;
-}
-
-
-
-
-PImage createEdgeImage(PImage pimg) {
-  pimg.filter(INVERT);
-  pimg.filter(BLUR);
-
-  float[][] kernel = { { -1, -1, -1 },
-                       { -1,  9, -1 },
-                       { -1, -1, -1 }};
-  pimg.loadPixels();
-
-  PImage edged = createImage(pimg.width, pimg.height, RGB);
-  // Loop through every pixel in the image.
-  for (int y = 1; y < pimg.height-1; y++) { // Skip top and bottom edges
-    for (int x = 1; x < pimg.width-1; x++) { // Skip left and right edges
-      float sum = 0; // Kernel sum for this pixel
-      for (int ky = -1; ky <= 1; ky++) {
-        for (int kx = -1; kx <= 1; kx++) {
-          // Calculate the adjacent pixel for this kernel point
-          int pos = (y + ky)*pimg.width + (x + kx);
-          // Image is grayscale, red/green/blue are identical
-          float val = red(pimg.pixels[pos]);
-          // Multiply adjacent pixels based on the kernel values
-          sum += kernel[ky+1][kx+1] * val;
-        }
-      }
-      // For this pixel in the new image, set the gray value
-      // based on the sum from the kernel
-      edged.pixels[y*pimg.width + x] = color(sum);
-    }
-  }
-  // State that there are changes to edged.pixels[]
-  edged.updatePixels(); 
-  return edged;
-}
 

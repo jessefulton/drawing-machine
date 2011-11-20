@@ -3,7 +3,7 @@
 void initControls() {
     //TODO: http://www.sojamo.de/libraries/controlP5/examples/ControlP5window/ControlP5window.pde
   controlP5 = new ControlP5(this);
-  //controlP5.setAutoDraw(false);
+  controlP5.setAutoDraw(false);
   controlWindow = controlP5.addControlWindow("controlP5window",0,500,480,75);
   controlWindow.hideCoordinates();
   
@@ -28,12 +28,12 @@ void initControls() {
   Controller threshLabel = controlP5.addTextlabel("THRESH_RANGE_LABEL", "THRESHOLD_RANGE", 240, 60);
   threshLabel.setWindow(controlWindow);
 
-/*
+
   Controller minBlobSizeNumberbox = controlP5.addNumberbox("MIN_BLOB_SIZE", MIN_BLOB_SIZE, 240, 10,70,14);
   minBlobSizeNumberbox.setWindow(controlWindow);
   Controller maxBlobSizeNumberbox = controlP5.addNumberbox("MAX_BLOB_SIZE", MAX_BLOB_SIZE, 320, 10,70,14);
   maxBlobSizeNumberbox.setWindow(controlWindow);
-*/
+
 
   
   Controller regenerateButton = controlP5.addButton("REGENERATE",1.0,320,(40),70,14);
@@ -54,29 +54,24 @@ void IMAGE_MODE(boolean flag) {
 }
 
 void REGENERATE() {
-  println("clicked regenerate");
   generate();
 }
 
 void THRESHOLD_STEP(int step) {
-  println("step: " + step);
   THRESH_STEP = step;
 }
 
 void MIN_BLOB_SIZE(int step) {
   MIN_BLOB_SIZE = step;
-  println("MIN BLOB SIZE: " + MIN_BLOB_SIZE);
 }
 
 void MAX_BLOB_SIZE(int step) {
   MAX_BLOB_SIZE = step;
-  println("MAX BLOB SIZE: " + MAX_BLOB_SIZE);
 }
 
 void controlEvent(ControlEvent theEvent) {
   if(theEvent.controller().name().equals("THRESHOLD_RANGE")) {
     Range r = (Range) theEvent.controller();
-    println("thresh: " + r.highValue() + "; " + r.lowValue());
     MAX_THRESH = int(r.highValue());
     MIN_THRESH = int(r.lowValue());
     //r.setHighValue(float(MAX_THRESH));
@@ -90,7 +85,6 @@ void controlEvent(ControlEvent theEvent) {
   }
   else if (theEvent.controller().name().equals("GRANULARITY")) {
     Slider r = (Slider) theEvent.controller();
-    println("granularity: " + r.value());
     GRANULARITY = r.value();
   }
   
