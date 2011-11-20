@@ -38,8 +38,8 @@ float MAX_DIM = 0;
 float minX, minY, maxX, maxY;
 
 int MIN_THRESH = 10; //50;
-int MAX_THRESH = 250;
-int THRESH_STEP = 30;
+int MAX_THRESH = 200;
+int THRESH_STEP = 10;
 int MAX_BLOB_SIZE;
 int MIN_BLOB_SIZE;
 
@@ -156,13 +156,12 @@ void generate() {
   //  MYBLOBS = edgeProcessor.process(tempImg, new ImageProcessorOptions(8000, MIN_BLOB_SIZE, MAX_BLOB_SIZE, MIN_THRESH, MAX_THRESH, THRESH_STEP));
 
   PosterizeProcessor processor = new PosterizeProcessor();
-  Vector blobs = processor.process(tempImg, 8000, MIN_BLOB_SIZE, MAX_BLOB_SIZE, 6);// , 8000, MAX_BLOB_SIZE, MIN_BLOB_SIZE, 6));
+  //GreyscalePosterizeProcessor processor = new GreyscalePosterizeProcessor();
+
+  Vector blobs = processor.process(tempImg, 8000, MIN_BLOB_SIZE, MAX_BLOB_SIZE, THRESH_STEP);
   MYBLOBS = new PTBlobs(blobs);
   
-  //GreyscalePosterizeProcessor processor = new GreyscalePosterizeProcessor();
-  //Vector blobs = processor.process(tempImg, 8000, MIN_BLOB_SIZE, MAX_BLOB_SIZE, 6);// , 8000, MAX_BLOB_SIZE, MIN_BLOB_SIZE, 6));
-  //MYBLOBS = new PTBlobs(blobs);
-
+  
   MAX_DIM = max(tempImg.height, tempImg.width);
   
 
@@ -197,7 +196,7 @@ void showBlobs() {
         float theX = mapper.map(b.points[i].x + b.xOffset) * (screenmaxdim/SCREEN_SCALE_FACTOR);
         float theY = mapper.map(b.points[i].y + b.yOffset) * (screenmaxdim/SCREEN_SCALE_FACTOR);
     
-        stroke(0);
+        stroke(0, (255/THRESH_STEP));
         noFill();
 
         vertex(theX, theY);
