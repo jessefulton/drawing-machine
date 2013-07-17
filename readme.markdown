@@ -9,6 +9,18 @@ Processing is used to do image maniuplation and convert a bitmap image into a se
 A Max/MSP patch recieves OSC messages with image information and translates that data into a series of commands, instructing the motors to move to the correct physical locations.
 There is a constant stream of data back and forth between the motors (via the Make Controller) and Max/MSP to ensure all motion is coordinated and timed properly.
 
+# Installation
+
+This project requires Max5 and Processing 1.5.x. It has not been tested with later versions. There are also four required Processing libraries. Download the following libraries and put them in ~/Documents/Processing/libraries
+
+* [https://code.google.com/p/controlp5/downloads/detail?name=controlP5_0.5.4.zip&can=2&q=](https://code.google.com/p/controlp5/downloads/detail?name=controlP5_0.5.4.zip&can=2&q=)
+* [https://code.google.com/p/oscp5/downloads/detail?name=oscP5-0.9.6.zip&can=1&q=](https://code.google.com/p/oscp5/downloads/detail?name=oscP5-0.9.6.zip&can=1&q=)
+* [http://www.ricardmarxer.com/processing/geomerative/geomerative-09.zip](http://www.ricardmarxer.com/processing/geomerative/geomerative-09.zip)
+
+And then follow the instructions here to install OpenCV
+
+* [http://ubaa.net/shared/processing/opencv/](http://ubaa.net/shared/processing/opencv/)
+
 # Usage
 
 Instructions for the machine are located in Presentation of the main patch - max/stepper.json
