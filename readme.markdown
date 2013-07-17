@@ -11,15 +11,26 @@ There is a constant stream of data back and forth between the motors (via the Ma
 
 # Installation
 
-This project requires Max5 and Processing 1.5.x. It has not been tested with later versions. There are also four required Processing libraries. Download the following libraries and put them in ~/Documents/Processing/libraries
+This project requires Max5 and Processing 1.5.x. It has not been tested with later versions.
+
+### Processing
+
+There are also four required Processing libraries. Download the following libraries and put them in ~/Documents/Processing/libraries
 
 * [https://code.google.com/p/controlp5/downloads/detail?name=controlP5_0.5.4.zip&can=2&q=](https://code.google.com/p/controlp5/downloads/detail?name=controlP5_0.5.4.zip&can=2&q=)
 * [https://code.google.com/p/oscp5/downloads/detail?name=oscP5-0.9.6.zip&can=1&q=](https://code.google.com/p/oscp5/downloads/detail?name=oscP5-0.9.6.zip&can=1&q=)
 * [http://www.ricardmarxer.com/processing/geomerative/geomerative-09.zip](http://www.ricardmarxer.com/processing/geomerative/geomerative-09.zip)
+* [http://ubaa.net/shared/processing/opencv/download/01/opencv_01-p151.zip](http://ubaa.net/shared/processing/opencv/download/01/opencv_01-p151.zip)
 
-And then follow the instructions here to install OpenCV
+
+And then follow the instructions here to install OpenCV (but not the associated Processing library)
 
 * [http://ubaa.net/shared/processing/opencv/](http://ubaa.net/shared/processing/opencv/)
+
+
+### Max
+
+The Max patch requires externals for the Make Controller.
 
 # Usage
 
