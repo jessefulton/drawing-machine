@@ -1,5 +1,23 @@
-Source code for a custom drawing machine built as part of the [Mechatronics research group at UCSC](http://danm.ucsc.edu/web/Mechatronics)
+# About
+This is the source code for a custom drawing machine which was built by the [Mechatronics research group at UCSC](http://danm.ucsc.edu/web/Mechatronics)
 
-Hardware consists of a Make Controller with two stepper motors controlling x/y axes and a linear servo motor controlling the up/down motion of the pen.
+The machine is run by a Make Controller which communicates to two stepper motors (x/y axes) and a linear servo motor (z axis - or pen up/down.)
 
-Video documentation of the project can be found on my [vimeo page](http://vimeo.com/jessefulton).
+### Processing
+Processing is used to do image maniuplation and convert a bitmap image into a series of vector shapes. This information is then sent to Max/MSP over OSC.
+
+### Max/MSP
+A Max/MSP patch recieves OSC messages with image information and translates that data into a series of commands, instructing the motors to move to the correct physical locations.
+There is a constant stream of data back and forth between the motors (via the Make Controller) and Max/MSP to ensure all motion is coordinated and timed properly.
+
+## Video
+Watch a [timelapse][] of the initial build.
+
+##Images
+[Drawing Machine Prints on Flickr][flickr link]
+
+[![Drawing Machine Prints on Flickr][flickr image]][flickr link]
+
+  [timelapse]: https://vimeo.com/28810990
+  [flickr link]: http://www.flickr.com/photos/jessefulton/sets/72157629021647557
+  [flickr image]: http://farm8.staticflickr.com/7172/6758645323_86f0969b66.jpg (Yager)
